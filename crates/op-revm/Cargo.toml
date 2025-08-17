@@ -49,6 +49,7 @@ std = [
 hashbrown = ["revm/hashbrown"]
 serde = ["dep:serde", "revm/serde", "alloy-primitives/serde"]
 portable = ["revm/portable"]
+optional_gasless = ["revm/optional_gasless"]
 
 dev = [
 	"memory_limit",

@@ -92,11 +92,17 @@ pub fn validate_tx_env<CTX: ContextTr, Error>(
     let tx_type = context.tx().tx_type();
     let tx = context.tx();
 
-    let base_fee = if context.cfg().is_base_fee_check_disabled() {
+	#[cfg_attr(not(feature = "optional_gasless"), allow(unused_mut))]
+    let mut base_fee = if context.cfg().is_base_fee_check_disabled() {
         None
     } else {
         Some(context.block().basefee() as u128)
     };
+
+	#[cfg(feature = "optional_gasless")]
+	if context.cfg().is_gasless_allowed() && context_interface::transaction::is_gasless(&tx) {
+		base_fee = None;
+	}
 
     let tx_type = TransactionType::from(tx_type);
 
@@ -603,5 +609,69 @@ mod tests {
             }
             _ => panic!("execution result is not Success"),
         }
+    }
+
+    #[cfg(feature = "optional_gasless")]
+    #[test]
+    fn test_optional_gasless_eip1559_zero_fees_allowed() {
+        let caller = address!("0x0000000000000000000000000000000000100001");
+        let to = address!("0x0000000000000000000000000000000000200002");
+
+        let ctx = Context::mainnet()
+            .modify_block_chained(|b| {
+                b.basefee = 100;
+            })
+            .modify_cfg_chained(|c| {
+                c.allow_gasless = true;
+            })
+            .with_db(CacheDB::<EmptyDB>::default());
+
+        let result = ctx
+            .build_mainnet()
+            .transact_commit(
+                TxEnv::builder()
+                    .tx_type(Some(2)) // EIP-1559
+                    .caller(caller)
+                    .kind(TxKind::Call(to))
+                    .gas_limit(21_000)
+                    .gas_price(0) // max_fee_per_gas = 0
+                    .gas_priority_fee(Some(0))
+                    .build()
+                    .unwrap(),
+            );
+
+        assert!(matches!(result, Ok(ExecutionResult::Success { .. })));
+    }
+
+    #[cfg(feature = "optional_gasless")]
+    #[test]
+    fn test_optional_gasless_eip1559_zero_fees_disallowed() {
+        let caller = address!("0x0000000000000000000000000000000000300003");
+        let to = address!("0x0000000000000000000000000000000000400004");
+
+        let ctx = Context::mainnet()
+            .modify_block_chained(|b| {
+                b.basefee = 100;
+            })
+            .with_db(CacheDB::<EmptyDB>::default());
+
+        let result = ctx
+            .build_mainnet()
+            .transact_commit(
+                TxEnv::builder()
+                    .tx_type(Some(2)) // EIP-1559
+                    .caller(caller)
+                    .kind(TxKind::Call(to))
+                    .gas_limit(21_000)
+                    .gas_price(0) // max_fee_per_gas = 0
+                    .gas_priority_fee(Some(0))
+                    .build()
+                    .unwrap(),
+            );
+
+        assert!(matches!(
+            result,
+            Err(EVMError::Transaction(InvalidTransaction::GasPriceLessThanBasefee))
+        ));
     }
 }

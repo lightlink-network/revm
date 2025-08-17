@@ -55,3 +55,4 @@ serde = [
 	"either/serde",
 ]
 serde-json = ["serde"]
+optional_gasless = []

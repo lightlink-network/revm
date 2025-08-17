@@ -89,6 +89,7 @@ optional_block_gas_limit = ["context/optional_block_gas_limit"]
 optional_eip3541 = ["context/optional_eip3541"]
 optional_eip3607 = ["context/optional_eip3607"]
 optional_no_base_fee = ["context/optional_no_base_fee"]
+optional_gasless = ["context/optional_gasless", "handler/optional_gasless"]
 
 # Precompiles features
 

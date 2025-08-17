@@ -311,9 +311,14 @@ where
         let is_deposit = evm.ctx().tx().tx_type() == DEPOSIT_TRANSACTION_TYPE;
         let is_regolith = evm.ctx().cfg().spec().is_enabled_in(OpSpecId::REGOLITH);
 
+        #[cfg(feature = "optional_gasless")]
+        let is_gasless_tx = revm::context_interface::transaction::is_gasless(&evm.ctx().tx());
+        #[cfg(not(feature = "optional_gasless"))]
+        let is_gasless_tx = false;
+
         // Prior to Regolith, deposit transactions did not receive gas refunds.
         let is_gas_refund_disabled = is_deposit && !is_regolith;
-        if !is_gas_refund_disabled {
+        if !is_gas_refund_disabled && !is_gasless_tx {
             frame_result.gas_mut().set_final_refund(
                 evm.ctx()
                     .cfg()
@@ -332,7 +337,13 @@ where
         let is_deposit = evm.ctx().tx().tx_type() == DEPOSIT_TRANSACTION_TYPE;
 
         // Transfer fee to coinbase/beneficiary.
-        if is_deposit {
+        // When optional_gasless is enabled, also treat gasless transactions as free.
+        #[cfg(feature = "optional_gasless")]
+        let is_gasless_tx = revm::context_interface::transaction::is_gasless(&evm.ctx().tx());
+        #[cfg(not(feature = "optional_gasless"))]
+        let is_gasless_tx = false;
+
+        if is_deposit || is_gasless_tx {
             return Ok(());
         }
 

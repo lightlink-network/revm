@@ -104,6 +104,11 @@ pub struct CfgEnv<SPEC = SpecId> {
     /// By default, it is set to `false`.
     #[cfg(feature = "optional_priority_fee_check")]
     pub disable_priority_fee_check: bool,
+    /// Allow gasless transactions
+    ///
+    /// By default, it is set to `false`.
+    #[cfg(feature = "optional_gasless")]
+    pub allow_gasless: bool,
 }
 
 impl CfgEnv {
@@ -159,6 +164,8 @@ impl<SPEC> CfgEnv<SPEC> {
             disable_base_fee: false,
             #[cfg(feature = "optional_priority_fee_check")]
             disable_priority_fee_check: false,
+            #[cfg(feature = "optional_gasless")]
+            allow_gasless: false,
         }
     }
 
@@ -206,6 +213,8 @@ impl<SPEC> CfgEnv<SPEC> {
             disable_base_fee: self.disable_base_fee,
             #[cfg(feature = "optional_priority_fee_check")]
             disable_priority_fee_check: self.disable_priority_fee_check,
+            #[cfg(feature = "optional_gasless")]
+            allow_gasless: self.allow_gasless,
         }
     }
 
@@ -266,6 +275,10 @@ impl<SPEC: Into<SpecId> + Copy> Cfg for CfgEnv<SPEC> {
         self.max_blobs_per_tx
     }
 
+    #[inline]
+    #[cfg(feature = "optional_gasless")]
+    fn is_gasless_allowed(&self) -> bool { self.allow_gasless }
+    
     fn max_code_size(&self) -> usize {
         self.limit_contract_code_size
             .unwrap_or(eip170::MAX_CODE_SIZE)
@@ -344,6 +357,7 @@ impl<SPEC: Into<SpecId> + Copy> Cfg for CfgEnv<SPEC> {
             }
         }
     }
+
 }
 
 impl<SPEC: Default> Default for CfgEnv<SPEC> {
