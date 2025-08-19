@@ -357,7 +357,6 @@ impl<SPEC: Into<SpecId> + Copy> Cfg for CfgEnv<SPEC> {
             }
         }
     }
-
 }
 
 impl<SPEC: Default> Default for CfgEnv<SPEC> {
