@@ -289,7 +289,13 @@ where
     ) -> Result<(), Self::Error> {
         let mut additional_refund = U256::ZERO;
 
-        if evm.ctx().tx().tx_type() != DEPOSIT_TRANSACTION_TYPE {
+        #[cfg(feature = "optional_gasless")]
+        let is_gasless_tx = revm::context_interface::transaction::is_gasless(&evm.ctx().tx());
+        #[cfg(not(feature = "optional_gasless"))]
+        let is_gasless_tx = false;
+
+        // If not a deposit transaction and not a gasless transaction, reimburse the operator fee.
+        if evm.ctx().tx().tx_type() != DEPOSIT_TRANSACTION_TYPE && !is_gasless_tx {
             let spec = evm.ctx().cfg().spec();
             additional_refund = evm
                 .ctx()
