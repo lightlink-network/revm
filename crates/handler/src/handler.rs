@@ -243,8 +243,8 @@ pub trait Handler {
                 let gas_station_storage_slots = calculate_gas_station_slots(target_address);
                 let credits_slot = gas_station_storage_slots.credits_slot.into();
                 let available_credits = ctx
-                    .db_mut()
-                    .storage(GAS_STATION_PREDEPLOY, credits_slot)
+                    .journal_mut()
+                    .sload(GAS_STATION_PREDEPLOY, credits_slot)
                     .unwrap_or_default();
                 let gas_used = U256::from(exec_result.gas().used());
                 let new_credits = available_credits.saturating_sub(gas_used);
