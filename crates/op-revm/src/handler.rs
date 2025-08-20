@@ -115,10 +115,15 @@ where
             0
         };
 
+        #[cfg(feature = "optional_gasless")]
+        let is_gasless_tx = revm::context_interface::transaction::is_gasless(&evm.ctx().tx());
+        #[cfg(not(feature = "optional_gasless"))]
+        let is_gasless_tx = false;
+
         let mut additional_cost = U256::ZERO;
 
         // The L1-cost fee is only computed for Optimism non-deposit transactions.
-        if !is_deposit {
+        if !is_deposit && !is_gasless_tx {
             // L1 block info is stored in the context for later use.
             // and it will be reloaded from the database if it is not for the current block.
             if ctx.chain().l2_block != block_number {
