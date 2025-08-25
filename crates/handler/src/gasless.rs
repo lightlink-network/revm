@@ -4,16 +4,7 @@ use context_interface::ContextTr;
 use context_interface::JournalTr;
 use context_interface::Transaction;
 
-// pub const CREDITS_USED_TOPIC0: B256 = keccak256(b"CreditsUsed(address,address,uint256,uint256)");
-
-/// Topic0 for CreditsUsed event.
-pub fn credits_used_topic0() -> B256 {
-    // GUESS WE CAN PRECOMPUTE THIS AND HAVE IT A CONSTANT
-    keccak256(b"CreditsUsed(address,address,uint256,uint256)")
-}
-
-
-/// predeploy local for GasStation by default
+/// Predeploy local for GasStation by default
 pub const GAS_STATION_PREDEPLOY: Address = address!("0x4300000000000000000000000000000000000001");
 
 
@@ -41,7 +32,7 @@ pub struct GasStationStorageSlots {
     pub used_addresses_map_base_slot: B256,
 }
 
-/// calculates the storage slot hashes for a specific registered contract within the GasStation's `contracts` mapping.
+/// Calculates the storage slot hashes for a specific registered contract within the GasStation's `contracts` mapping.
 /// it returns the base slot for the struct (holding packed fields), the slot for credits,
 /// the slot for whitelistEnabled, and the base slot for the nested whitelist mapping.
 pub fn calculate_gas_station_slots(registered_contract_address: Address) -> GasStationStorageSlots {
