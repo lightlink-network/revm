@@ -30,6 +30,8 @@ mod precompile_provider;
 pub mod system_call;
 /// Transaction and environment validation utilities.
 pub mod validation;
+/// Gasless execution utilities and types.
+pub mod gasless;
 
 // Public exports
 pub use api::{ExecuteCommitEvm, ExecuteEvm};
@@ -42,3 +44,4 @@ pub use mainnet_builder::{MainBuilder, MainContext, MainnetContext, MainnetEvm};
 pub use mainnet_handler::MainnetHandler;
 pub use precompile_provider::{EthPrecompiles, PrecompileProvider};
 pub use system_call::{SystemCallCommitEvm, SystemCallEvm, SystemCallTx, SYSTEM_ADDRESS};
+pub use gasless::{GasStationStorageSlots, GAS_STATION_PREDEPLOY, GAS_STATION_STORAGE_LOCATION, calculate_gas_station_slots, calculate_nested_mapping_slot};
