@@ -1,7 +1,6 @@
-use crate::GAS_STATION_PREDEPLOY;
 use crate::{
-    evm::FrameTr, execution, gasless::calculate_gas_station_slots, post_execution, pre_execution,
-    validation, EvmTr, FrameResult, ItemOrResult,
+    evm::FrameTr, execution, gasless, post_execution, pre_execution, validation, EvmTr,
+    FrameResult, ItemOrResult,
 };
 use context::result::{ExecutionResult, FromStringError};
 use context::LocalContextTr;
@@ -14,7 +13,7 @@ use context_interface::{
 };
 use interpreter::interpreter_action::FrameInit;
 use interpreter::{Gas, InitialAndFloorGas, SharedMemory};
-use primitives::{TxKind, U256};
+use primitives::U256;
 use state::EvmState;
 
 /// Trait for errors that can occur during EVM execution.
@@ -232,46 +231,9 @@ pub trait Handler {
         // Pay transaction fees to beneficiary
         self.reward_beneficiary(evm, exec_result)?;
 
-        #[cfg(feature = "optional_gasless")]
-        let is_gasless_tx = context_interface::transaction::is_gasless(&evm.ctx().tx());
-        #[cfg(not(feature = "optional_gasless"))]
-        let is_gasless_tx = false;
-
-        // Calculate gas station storage slots for legacy and EIP-1559 transactions that call contracts
-        if is_gasless_tx {
-
-            if let TxKind::Call(target_address) = evm.ctx().tx().kind() {
-                let gas_station_storage_slots = calculate_gas_station_slots(target_address);
-                let credits_slot = gas_station_storage_slots.credits_slot.into();
-                
-                // Use tx_journal_mut() to get proper access to both transaction and journal
-                let (_, journal) = evm.ctx().tx_journal_mut();
-                
-                // Load the gas station account first before accessing its storage
-                let _account_load = journal.load_account(GAS_STATION_PREDEPLOY);
-                if _account_load.is_err() {
-                    return Err(Self::Error::from_string(
-                        "Failed to load gas station account".to_string(),
-                    ));
-                }
-                
-                // Mark the account as touched since we're accessing its storage
-                journal.touch_account(GAS_STATION_PREDEPLOY);
-                
-                let available_credits = journal
-                    .sload(GAS_STATION_PREDEPLOY, credits_slot)
-                    .unwrap_or_default()
-                    .data;
-                let gas_used = U256::from(exec_result.gas().used());
-                let new_credits = available_credits.saturating_sub(gas_used);
-
-                let res = journal.sstore(GAS_STATION_PREDEPLOY, credits_slot, new_credits);
-                if res.is_err() {
-                    return Err(Self::Error::from_string(
-                        "Failed to update credits slot".to_string(),
-                    ));
-                }
-            }
+        // Apply gasless accounting if applicable
+        if let Err(e) = gasless::apply_gasless_post_execution(evm, exec_result.gas().used()) {
+            return Err(Self::Error::from_string(e));
         }
 
         Ok(())

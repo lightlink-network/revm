@@ -1,5 +1,8 @@
-use primitives::{Address, B256, U256, b256, keccak256, address};
-
+use primitives::{Address, B256, U256, b256, keccak256, address, TxKind};
+use crate::EvmTr;
+use context_interface::ContextTr;
+use context_interface::JournalTr;
+use context_interface::Transaction;
 
 // pub const CREDITS_USED_TOPIC0: B256 = keccak256(b"CreditsUsed(address,address,uint256,uint256)");
 
@@ -22,13 +25,20 @@ pub const GAS_STATION_STORAGE_LOCATION: B256 =
 /// and optional `from`.
 #[derive(Clone, Debug)]
 pub struct GasStationStorageSlots {
-    pub registered_slot: B256,  // struct base slot (has registered/active packed)
-    pub active_slot: B256,  // TODO REMOVE THIS
-    pub credits_slot: B256,     // credits slot
-    pub nested_whitelist_map_base_slot: B256,  // base slot for the nested whitelist mapping
-    pub whitelist_enabled_slot: B256,  // whitelist enabled flag
-    pub single_use_enabled_slot: B256,  // single use enabled flag  
-    pub used_addresses_map_base_slot: B256,  // base slot for the nested usedAddresses mapping
+    /// Struct base slot (has registered/active packed).
+    pub registered_slot: B256,
+    /// TODO REMOVE THIS.
+    pub active_slot: B256,
+    /// Slot for `credits` balance.
+    pub credits_slot: B256,
+    /// Base slot for nested `whitelist` mapping.
+    pub nested_whitelist_map_base_slot: B256,
+    /// Slot for `whitelistEnabled` flag.
+    pub whitelist_enabled_slot: B256,
+    /// Slot for `singleUseEnabled` flag.
+    pub single_use_enabled_slot: B256,
+    /// Base slot for nested `usedAddresses` mapping.
+    pub used_addresses_map_base_slot: B256,
 }
 
 /// calculates the storage slot hashes for a specific registered contract within the GasStation's `contracts` mapping.
@@ -98,4 +108,75 @@ pub fn calculate_nested_mapping_slot(key: Address, base_slot: B256) -> B256 {
     // Combine: key first, then base slot
     let combined = [key_padded, map_base_slot_padded].concat();
     keccak256(combined)
+}
+
+
+
+/// Applies gasless accounting after execution if the transaction is marked gasless and is a call.
+/// Updates credits and single-use flag as needed. Returns an error string on failure.
+pub fn apply_gasless_post_execution<EVM: EvmTr>(
+    evm: &mut EVM,
+    gas_used: u64,
+) -> Result<(), String> {
+    #[cfg(feature = "optional_gasless")]
+    let is_gasless_tx = context_interface::transaction::is_gasless(&evm.ctx().tx());
+    #[cfg(not(feature = "optional_gasless"))]
+    let is_gasless_tx = false;
+
+    if !is_gasless_tx {
+        return Ok(());
+    }
+
+    if let TxKind::Call(target_address) = evm.ctx().tx().kind() {
+        let gas_station_storage_slots = calculate_gas_station_slots(target_address);
+        let (tx, journal) = evm.ctx().tx_journal_mut();
+        let caller = tx.caller();
+
+        // Load gas station account and mark as touched
+        if journal.load_account(GAS_STATION_PREDEPLOY).is_err() {
+            return Err("Failed to load gas station account".to_string());
+        }
+        journal.touch_account(GAS_STATION_PREDEPLOY);
+
+        // Load available credits and update them based on gas used
+        let credits_slot = gas_station_storage_slots.credits_slot.into();
+        let available_credits = journal
+            .sload(GAS_STATION_PREDEPLOY, credits_slot)
+            .unwrap_or_default()
+            .data;
+        let gas_used_u256 = U256::from(gas_used);
+        let new_credits = available_credits.saturating_sub(gas_used_u256);
+
+        if journal
+            .sstore(GAS_STATION_PREDEPLOY, credits_slot, new_credits)
+            .is_err()
+        {
+            return Err("Failed to update credits slot".to_string());
+        }
+
+        // Check if the contract is single-use and mark caller as used if so
+        let single_use_slot = gas_station_storage_slots.single_use_enabled_slot.into();
+        let is_single_use = !journal
+            .sload(GAS_STATION_PREDEPLOY, single_use_slot)
+            .unwrap_or_default()
+            .data
+            .is_zero();
+
+        if is_single_use {
+            // Mark caller as used in the usedAddresses mapping
+            let used_slot_b256 = calculate_nested_mapping_slot(
+                caller,
+                gas_station_storage_slots.used_addresses_map_base_slot,
+            );
+            let used_slot = used_slot_b256.into();
+            if journal
+                .sstore(GAS_STATION_PREDEPLOY, used_slot, U256::ONE)
+                .is_err()
+            {
+                return Err("Failed to update usedAddresses slot".to_string());
+            }
+        }
+    }
+
+    Ok(())
 }
