@@ -99,8 +99,7 @@ pub fn validate_tx_env<CTX: ContextTr, Error>(
         Some(context.block().basefee() as u128)
     };
 
-    #[cfg(feature = "optional_gasless")]
-    if context.cfg().is_gasless_allowed() && context_interface::transaction::is_gasless(&tx) {
+    if crate::gasless::is_gasless_effective(&context) {
         base_fee = None;
     }
 

@@ -1,4 +1,6 @@
 use crate::EvmTr;
+#[cfg(feature = "optional_gasless")]
+use context_interface::Cfg;
 use context_interface::ContextTr;
 use context_interface::JournalTr;
 use context_interface::Transaction;
@@ -110,12 +112,7 @@ pub fn apply_gasless_post_execution<EVM: EvmTr>(
     evm: &mut EVM,
     gas_used: u64,
 ) -> Result<(), String> {
-    #[cfg(feature = "optional_gasless")]
-    let is_gasless_tx = context_interface::transaction::is_gasless(&evm.ctx().tx());
-    #[cfg(not(feature = "optional_gasless"))]
-    let is_gasless_tx = false;
-
-    if !is_gasless_tx {
+    if !is_gasless_effective(evm.ctx_ref()) {
         return Ok(());
     }
 
@@ -171,4 +168,18 @@ pub fn apply_gasless_post_execution<EVM: EvmTr>(
     }
 
     Ok(())
+}
+
+#[inline]
+/// Returns true if gasless transactions are allowed by config and the tx is zero-fee (gasless)
+pub fn is_gasless_effective<C: ContextTr>(ctx: &C) -> bool {
+    #[cfg(feature = "optional_gasless")]
+    {
+        ctx.cfg().is_gasless_allowed() && context_interface::transaction::is_gasless(ctx.tx())
+    }
+    #[cfg(not(feature = "optional_gasless"))]
+    {
+        let _ = ctx;
+        false
+    }
 }

@@ -212,7 +212,6 @@ pub trait Transaction {
     }
 }
 
-#[cfg(feature = "optional_gasless")]
 /// Returns true if the transaction is a zero-fee transaction, independent of any config.
 ///
 /// Rules:
