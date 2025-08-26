@@ -92,17 +92,17 @@ pub fn validate_tx_env<CTX: ContextTr, Error>(
     let tx_type = context.tx().tx_type();
     let tx = context.tx();
 
-	#[cfg_attr(not(feature = "optional_gasless"), allow(unused_mut))]
+    #[cfg_attr(not(feature = "optional_gasless"), allow(unused_mut))]
     let mut base_fee = if context.cfg().is_base_fee_check_disabled() {
         None
     } else {
         Some(context.block().basefee() as u128)
     };
 
-	#[cfg(feature = "optional_gasless")]
-	if context.cfg().is_gasless_allowed() && context_interface::transaction::is_gasless(&tx) {
-		base_fee = None;
-	}
+    #[cfg(feature = "optional_gasless")]
+    if context.cfg().is_gasless_allowed() && context_interface::transaction::is_gasless(&tx) {
+        base_fee = None;
+    }
 
     let tx_type = TransactionType::from(tx_type);
 
@@ -626,19 +626,17 @@ mod tests {
             })
             .with_db(CacheDB::<EmptyDB>::default());
 
-        let result = ctx
-            .build_mainnet()
-            .transact_commit(
-                TxEnv::builder()
-                    .tx_type(Some(2)) // EIP-1559
-                    .caller(caller)
-                    .kind(TxKind::Call(to))
-                    .gas_limit(21_000)
-                    .gas_price(0) // max_fee_per_gas = 0
-                    .gas_priority_fee(Some(0))
-                    .build()
-                    .unwrap(),
-            );
+        let result = ctx.build_mainnet().transact_commit(
+            TxEnv::builder()
+                .tx_type(Some(2)) // EIP-1559
+                .caller(caller)
+                .kind(TxKind::Call(to))
+                .gas_limit(21_000)
+                .gas_price(0) // max_fee_per_gas = 0
+                .gas_priority_fee(Some(0))
+                .build()
+                .unwrap(),
+        );
 
         assert!(matches!(result, Ok(ExecutionResult::Success { .. })));
     }
@@ -655,23 +653,23 @@ mod tests {
             })
             .with_db(CacheDB::<EmptyDB>::default());
 
-        let result = ctx
-            .build_mainnet()
-            .transact_commit(
-                TxEnv::builder()
-                    .tx_type(Some(2)) // EIP-1559
-                    .caller(caller)
-                    .kind(TxKind::Call(to))
-                    .gas_limit(21_000)
-                    .gas_price(0) // max_fee_per_gas = 0
-                    .gas_priority_fee(Some(0))
-                    .build()
-                    .unwrap(),
-            );
+        let result = ctx.build_mainnet().transact_commit(
+            TxEnv::builder()
+                .tx_type(Some(2)) // EIP-1559
+                .caller(caller)
+                .kind(TxKind::Call(to))
+                .gas_limit(21_000)
+                .gas_price(0) // max_fee_per_gas = 0
+                .gas_priority_fee(Some(0))
+                .build()
+                .unwrap(),
+        );
 
         assert!(matches!(
             result,
-            Err(EVMError::Transaction(InvalidTransaction::GasPriceLessThanBasefee))
+            Err(EVMError::Transaction(
+                InvalidTransaction::GasPriceLessThanBasefee
+            ))
         ));
     }
 }

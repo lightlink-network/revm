@@ -277,8 +277,10 @@ impl<SPEC: Into<SpecId> + Copy> Cfg for CfgEnv<SPEC> {
 
     #[inline]
     #[cfg(feature = "optional_gasless")]
-    fn is_gasless_allowed(&self) -> bool { self.allow_gasless }
-    
+    fn is_gasless_allowed(&self) -> bool {
+        self.allow_gasless
+    }
+
     fn max_code_size(&self) -> usize {
         self.limit_contract_code_size
             .unwrap_or(eip170::MAX_CODE_SIZE)

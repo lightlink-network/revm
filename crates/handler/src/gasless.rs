@@ -1,12 +1,11 @@
-use primitives::{Address, B256, U256, b256, keccak256, address, TxKind};
 use crate::EvmTr;
 use context_interface::ContextTr;
 use context_interface::JournalTr;
 use context_interface::Transaction;
+use primitives::{address, b256, keccak256, Address, TxKind, B256, U256};
 
 /// Predeploy local for GasStation by default
 pub const GAS_STATION_PREDEPLOY: Address = address!("0x4300000000000000000000000000000000000001");
-
 
 /// Result of keccak256(abi.encode(uint256(keccak256("gasstation.main")) - 1)) & ~bytes32(uint256(0xff));
 pub const GAS_STATION_STORAGE_LOCATION: B256 =
@@ -36,24 +35,24 @@ pub struct GasStationStorageSlots {
 /// it returns the base slot for the struct (holding packed fields), the slot for credits,
 /// the slot for whitelistEnabled, and the base slot for the nested whitelist mapping.
 pub fn calculate_gas_station_slots(registered_contract_address: Address) -> GasStationStorageSlots {
-	// The 'contracts' mapping is at offset 1 from the storage location
-	// (dao is at offset 0, contracts is at offset 1)
+    // The 'contracts' mapping is at offset 1 from the storage location
+    // (dao is at offset 0, contracts is at offset 1)
     let contracts_map_slot = U256::from_be_bytes(GAS_STATION_STORAGE_LOCATION.0) + U256::from(1);
 
     // Calculate the base slot for the struct entry in the mapping
     // - left pad the address to 32 bytes
     let mut key_padded = [0u8; 32];
     key_padded[12..].copy_from_slice(registered_contract_address.as_slice()); // Left-pad 20-byte address to 32 bytes
-    // - I expect this is left padded because big endian etc
+                                                                              // - I expect this is left padded because big endian etc
     let map_slot_padded = contracts_map_slot.to_be_bytes::<32>();
     // - keccak256(append(keyPadded, mapSlotPadded...))
     let combined = [key_padded, map_slot_padded].concat();
     let struct_base_slot_hash = keccak256(combined);
 
-	// Calculate subsequent slots by adding offsets to the base slot hash
-	// New struct layout: bool registered, bool active, address admin (all packed in slot 0)
-	// uint256 credits (slot 1), bool whitelistEnabled (slot 2), mapping whitelist (slot 3)
-	// bool singleUseEnabled (slot 4), mapping usedAddresses (slot 5)
+    // Calculate subsequent slots by adding offsets to the base slot hash
+    // New struct layout: bool registered, bool active, address admin (all packed in slot 0)
+    // uint256 credits (slot 1), bool whitelistEnabled (slot 2), mapping whitelist (slot 3)
+    // bool singleUseEnabled (slot 4), mapping usedAddresses (slot 5)
     let struct_base_slot_u256 = U256::from_be_bytes(struct_base_slot_hash.0);
 
     // Slot for 'credits' (offset 1 from base - after the packed bools and address)
@@ -62,23 +61,27 @@ pub fn calculate_gas_station_slots(registered_contract_address: Address) -> GasS
 
     // Slot for 'whitelistEnabled' (offset 2 from base)
     let whitelist_enabled_slot_u256 = struct_base_slot_u256 + U256::from(2);
-    let whitelist_enabled_slot_hash = B256::from_slice(&whitelist_enabled_slot_u256.to_be_bytes::<32>());
+    let whitelist_enabled_slot_hash =
+        B256::from_slice(&whitelist_enabled_slot_u256.to_be_bytes::<32>());
 
     // Base slot for the nested 'whitelist' mapping (offset 3 from base)
     let nested_whitelist_map_base_slot_u256 = struct_base_slot_u256 + U256::from(3);
-    let nested_whitelist_map_base_slot_hash = B256::from_slice(&nested_whitelist_map_base_slot_u256.to_be_bytes::<32>());
+    let nested_whitelist_map_base_slot_hash =
+        B256::from_slice(&nested_whitelist_map_base_slot_u256.to_be_bytes::<32>());
 
     // Slot for 'singleUseEnabled' (offset 4 from base)
     let single_use_enabled_slot_u256 = struct_base_slot_u256 + U256::from(4);
-    let single_use_enabled_slot_hash = B256::from_slice(&single_use_enabled_slot_u256.to_be_bytes::<32>());
+    let single_use_enabled_slot_hash =
+        B256::from_slice(&single_use_enabled_slot_u256.to_be_bytes::<32>());
 
     // Base slot for the nested 'usedAddresses' mapping (offset 5 from base)
     let used_addresses_map_base_slot_u256 = struct_base_slot_u256 + U256::from(5);
-    let used_addresses_map_base_slot_hash = B256::from_slice(&used_addresses_map_base_slot_u256.to_be_bytes::<32>());
+    let used_addresses_map_base_slot_hash =
+        B256::from_slice(&used_addresses_map_base_slot_u256.to_be_bytes::<32>());
 
     GasStationStorageSlots {
         registered_slot: struct_base_slot_hash,
-        active_slot: struct_base_slot_hash,  
+        active_slot: struct_base_slot_hash,
         credits_slot: credit_slot_hash,
         whitelist_enabled_slot: whitelist_enabled_slot_hash,
         single_use_enabled_slot: single_use_enabled_slot_hash,
@@ -92,16 +95,14 @@ pub fn calculate_nested_mapping_slot(key: Address, base_slot: B256) -> B256 {
     // Left-pad the address to 32 bytes
     let mut key_padded = [0u8; 32];
     key_padded[12..].copy_from_slice(key.as_slice()); // Left-pad 20-byte address to 32 bytes
-    
+
     // The base_slot is already 32 bytes (B256)
     let map_base_slot_padded = base_slot.0;
-    
+
     // Combine: key first, then base slot
     let combined = [key_padded, map_base_slot_padded].concat();
     keccak256(combined)
 }
-
-
 
 /// Applies gasless accounting after execution if the transaction is marked gasless and is a call.
 /// Updates credits and single-use flag as needed. Returns an error string on failure.
