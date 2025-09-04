@@ -6,7 +6,6 @@ use context_interface::{
 };
 use interpreter::{Gas, InitialAndFloorGas, SuccessOrHalt};
 use primitives::{hardfork::SpecId, U256};
-use state::EvmState;
 
 /// Ensures minimum gas floor is spent according to EIP-7623.
 pub fn eip7623_check_gas_floor(gas: &mut Gas, init_and_floor_gas: InitialAndFloorGas) {
@@ -32,7 +31,7 @@ pub fn refund(spec: SpecId, gas: &mut Gas, eip7702_refund: i64) {
 #[inline]
 pub fn reimburse_caller<CTX: ContextTr>(
     context: &mut CTX,
-    gas: &mut Gas,
+    gas: &Gas,
     additional_refund: U256,
 ) -> Result<(), <CTX::Db as Database>::Error> {
     let basefee = context.block().basefee() as u128;
@@ -54,7 +53,7 @@ pub fn reimburse_caller<CTX: ContextTr>(
 #[inline]
 pub fn reward_beneficiary<CTX: ContextTr>(
     context: &mut CTX,
-    gas: &mut Gas,
+    gas: &Gas,
 ) -> Result<(), <CTX::Db as Database>::Error> {
     let beneficiary = context.block().beneficiary();
     let basefee = context.block().basefee() as u128;
@@ -80,7 +79,7 @@ pub fn reward_beneficiary<CTX: ContextTr>(
 /// Calculate last gas spent and transform internal reason to external.
 ///
 /// TODO make Journal FinalOutput more generic.
-pub fn output<CTX: ContextTr<Journal: JournalTr<State = EvmState>>, HALTREASON: HaltReasonTr>(
+pub fn output<CTX: ContextTr<Journal: JournalTr>, HALTREASON: HaltReasonTr>(
     context: &mut CTX,
     // TODO, make this more generic and nice.
     // FrameResult should be a generic that returns gas and interpreter result.
