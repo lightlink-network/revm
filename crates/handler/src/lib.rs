@@ -15,6 +15,8 @@ pub mod evm;
 pub mod execution;
 mod frame;
 mod frame_data;
+/// Gasless execution utilities and types.
+pub mod gasless;
 /// Handler implementation for orchestrating EVM execution.
 pub mod handler;
 /// EVM instruction set implementations and tables.
@@ -36,6 +38,10 @@ pub use api::{ExecuteCommitEvm, ExecuteEvm};
 pub use evm::{EvmTr, FrameTr};
 pub use frame::{return_create, ContextTrDbError, EthFrame};
 pub use frame_data::{CallFrame, CreateFrame, FrameData, FrameResult};
+pub use gasless::{
+    calculate_gas_station_slots, calculate_nested_mapping_slot, GasStationStorageSlots,
+    GAS_STATION_PREDEPLOY, GAS_STATION_STORAGE_LOCATION,
+};
 pub use handler::{EvmTrError, Handler};
 pub use item_or_result::{FrameInitOrResult, ItemOrResult};
 pub use mainnet_builder::{MainBuilder, MainContext, MainnetContext, MainnetEvm};

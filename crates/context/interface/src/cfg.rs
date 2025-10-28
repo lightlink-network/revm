@@ -59,6 +59,11 @@ pub trait Cfg {
     /// Returns whether the priority fee check is disabled.
     fn is_priority_fee_check_disabled(&self) -> bool;
 
+    /// Returns whether gasless transactions are allowed.
+    #[cfg(feature = "optional_gasless")]
+    fn is_gasless_allowed(&self) -> bool {
+        false
+    }
     /// Returns whether the fee charge is disabled.
     fn is_fee_charge_disabled(&self) -> bool;
 }

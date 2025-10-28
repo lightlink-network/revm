@@ -75,3 +75,9 @@ serde = [
 
 # Deprecated, please use `serde` feature instead.
 serde-json = ["serde"]
+
+# lightlink features
+optional_gasless = [
+    "context/optional_gasless",
+    "context-interface/optional_gasless",
+]

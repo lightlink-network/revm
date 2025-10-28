@@ -211,3 +211,18 @@ pub trait Transaction {
         Ok(effective_balance_spending)
     }
 }
+
+/// Returns true if the transaction is a zero-fee transaction, independent of any config.
+///
+/// Rules:
+/// - Legacy: gas_price == 0
+/// - EIP-1559: max_fee_per_gas == 0 && max_priority_fee_per_gas == 0
+pub fn is_gasless<T: Transaction>(tx: &T) -> bool {
+    match TransactionType::from(tx.tx_type()) {
+        TransactionType::Legacy => tx.gas_price() == 0,
+        TransactionType::Eip1559 => {
+            tx.max_fee_per_gas() == 0 && tx.max_priority_fee_per_gas().unwrap_or_default() == 0
+        }
+        _ => false,
+    }
+}

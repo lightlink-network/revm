@@ -1,10 +1,11 @@
 use crate::{
-    evm::FrameTr, execution, post_execution, pre_execution, validation, EvmTr, FrameResult,
-    ItemOrResult,
+    evm::FrameTr, execution, gasless, post_execution, pre_execution, validation, EvmTr,
+    FrameResult, ItemOrResult,
 };
 use context::result::{ExecutionResult, FromStringError};
 use context::LocalContextTr;
 use context_interface::context::ContextError;
+
 use context_interface::ContextTr;
 use context_interface::{
     result::{HaltReasonTr, InvalidHeader, InvalidTransaction},
@@ -228,6 +229,12 @@ pub trait Handler {
         self.reimburse_caller(evm, exec_result)?;
         // Pay transaction fees to beneficiary
         self.reward_beneficiary(evm, exec_result)?;
+
+        // Apply gasless accounting if applicable
+        if let Err(e) = gasless::apply_gasless_post_execution(evm, exec_result.gas().used()) {
+            return Err(Self::Error::from_string(e));
+        }
+
         Ok(())
     }
 

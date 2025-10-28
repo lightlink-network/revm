@@ -14,6 +14,7 @@ use revm::{
     },
     handler::{
         evm::FrameTr,
+        gasless::is_gasless_effective,
         handler::EvmTrError,
         post_execution::{self, reimburse_caller},
         pre_execution::validate_account_nonce_and_code,
@@ -118,7 +119,7 @@ where
         let mut additional_cost = U256::ZERO;
 
         // The L1-cost fee is only computed for Optimism non-deposit transactions.
-        if !is_deposit && !ctx.cfg().is_fee_charge_disabled() {
+        if !is_deposit && !ctx.cfg().is_fee_charge_disabled() && !is_gasless_effective(ctx)  {
             // L1 block info is stored in the context for later use.
             // and it will be reloaded from the database if it is not for the current block.
             if ctx.chain().l2_block != block_number {
@@ -290,7 +291,10 @@ where
     ) -> Result<(), Self::Error> {
         let mut additional_refund = U256::ZERO;
 
-        if evm.ctx().tx().tx_type() != DEPOSIT_TRANSACTION_TYPE {
+        // If not a deposit transaction and not a gasless transaction, reimburse the operator fee.
+        if evm.ctx().tx().tx_type() != DEPOSIT_TRANSACTION_TYPE
+            && !is_gasless_effective(evm.ctx_ref())
+        {
             let spec = evm.ctx().cfg().spec();
             additional_refund = evm
                 .ctx()
@@ -314,7 +318,7 @@ where
 
         // Prior to Regolith, deposit transactions did not receive gas refunds.
         let is_gas_refund_disabled = is_deposit && !is_regolith;
-        if !is_gas_refund_disabled {
+        if !is_gas_refund_disabled && !is_gasless_effective(evm.ctx_ref()) {
             frame_result.gas_mut().set_final_refund(
                 evm.ctx()
                     .cfg()
@@ -333,7 +337,8 @@ where
         let is_deposit = evm.ctx().tx().tx_type() == DEPOSIT_TRANSACTION_TYPE;
 
         // Transfer fee to coinbase/beneficiary.
-        if is_deposit {
+        // When optional_gasless is enabled, also treat gasless transactions as free.
+        if is_deposit || is_gasless_effective(evm.ctx_ref()) {
             return Ok(());
         }
 

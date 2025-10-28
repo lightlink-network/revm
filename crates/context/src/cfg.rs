@@ -104,6 +104,11 @@ pub struct CfgEnv<SPEC = SpecId> {
     /// By default, it is set to `false`.
     #[cfg(feature = "optional_priority_fee_check")]
     pub disable_priority_fee_check: bool,
+    /// Allow gasless transactions
+    ///
+    /// By default, it is set to `false`.
+    #[cfg(feature = "optional_gasless")]
+    pub allow_gasless: bool,
     /// Disables fee charging for transactions.
     /// This is useful when executing `eth_call` for example, on OP-chains where setting the base fee
     /// to 0 isn't sufficient.
@@ -165,6 +170,8 @@ impl<SPEC> CfgEnv<SPEC> {
             disable_base_fee: false,
             #[cfg(feature = "optional_priority_fee_check")]
             disable_priority_fee_check: false,
+            #[cfg(feature = "optional_gasless")]
+            allow_gasless: false,
             #[cfg(feature = "optional_fee_charge")]
             disable_fee_charge: false,
         }
@@ -214,6 +221,8 @@ impl<SPEC> CfgEnv<SPEC> {
             disable_base_fee: self.disable_base_fee,
             #[cfg(feature = "optional_priority_fee_check")]
             disable_priority_fee_check: self.disable_priority_fee_check,
+            #[cfg(feature = "optional_gasless")]
+            allow_gasless: self.allow_gasless,
             #[cfg(feature = "optional_fee_charge")]
             disable_fee_charge: self.disable_fee_charge,
         }
@@ -281,6 +290,12 @@ impl<SPEC: Into<SpecId> + Copy> Cfg for CfgEnv<SPEC> {
     #[inline]
     fn max_blobs_per_tx(&self) -> Option<u64> {
         self.max_blobs_per_tx
+    }
+
+    #[inline]
+    #[cfg(feature = "optional_gasless")]
+    fn is_gasless_allowed(&self) -> bool {
+        self.allow_gasless
     }
 
     fn max_code_size(&self) -> usize {
