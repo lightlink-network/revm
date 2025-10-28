@@ -119,7 +119,7 @@ where
         let mut additional_cost = U256::ZERO;
 
         // The L1-cost fee is only computed for Optimism non-deposit transactions.
-        if !is_deposit && !is_gasless_effective(ctx) {
+        if !is_deposit && !ctx.cfg().is_fee_charge_disabled() && !is_gasless_effective(ctx)  {
             // L1 block info is stored in the context for later use.
             // and it will be reloaded from the database if it is not for the current block.
             if ctx.chain().l2_block != block_number {
@@ -441,7 +441,7 @@ where
             let old_balance = acc.info.balance;
 
             // decrement transaction id as it was incremented when we discarded the tx.
-            acc.transaction_id -= acc.transaction_id;
+            acc.transaction_id -= 1;
             acc.info.nonce = acc.info.nonce.saturating_add(1);
             acc.info.balance = acc
                 .info

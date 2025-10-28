@@ -64,6 +64,8 @@ pub trait Cfg {
     fn is_gasless_allowed(&self) -> bool {
         false
     }
+    /// Returns whether the fee charge is disabled.
+    fn is_fee_charge_disabled(&self) -> bool;
 }
 
 /// What bytecode analysis to perform
